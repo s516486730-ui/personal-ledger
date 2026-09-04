@@ -2,14 +2,16 @@
 import { onMounted, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { appConfigDir } from "@tauri-apps/api/path";
-import { save } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { ElMessage } from "element-plus";
 import dayjs from "dayjs";
+import { getDb } from "../db/index";
 import { allTransactionsForCsv } from "../db/transactions";
 import { centsToYuan } from "../utils/money";
 
 const dataDir = ref("");
 const exporting = ref(false);
+const backingUp = ref(false);
 
 onMounted(async () => {
   try {
@@ -19,12 +21,20 @@ onMounted(async () => {
   }
 });
 
-async function copyPath() {
+/** 选择备份文件夹：把数据库完整快照复制到用户指定的位置（VACUUM INTO 在线备份，数据一致） */
+async function backupToFolder() {
   try {
-    await navigator.clipboard.writeText(dataDir.value);
-    ElMessage.success("路径已复制");
-  } catch {
-    ElMessage.warning("复制失败，请手动选中复制");
+    const dir = await open({ directory: true, title: "选择备份文件夹" });
+    if (!dir) return; // 用户取消
+    const dest = `${dir}/个人记账备份_${dayjs().format("YYYYMMDD_HHmmss")}.db`;
+    backingUp.value = true;
+    const db = await getDb();
+    await db.execute(`VACUUM INTO '${dest.replace(/'/g, "''")}'`);
+    ElMessage.success("备份完成：" + dest);
+  } catch (e) {
+    ElMessage.error("备份失败：" + e);
+  } finally {
+    backingUp.value = false;
   }
 }
 
@@ -86,21 +96,22 @@ async function doExport() {
     </el-card>
 
     <el-card shadow="never">
-      <template #header>📁 数据文件位置</template>
+      <template #header>📁 备份到指定文件夹</template>
       <p class="desc">
-        数据库文件保存在下面的文件夹里（文件名 ledger.db）。也可以直接复制这个文件做完整备份。
+        点击下方按钮，选择你希望保存备份的文件夹（如 U 盘、网盘同步目录），应用会把完整数据库复制一份过去（文件名带日期时间）。建议定期备份。
       </p>
-      <el-input :model-value="dataDir" readonly>
-        <template #append>
-          <el-button @click="copyPath">复制</el-button>
-        </template>
-      </el-input>
+      <el-button type="primary" :loading="backingUp" @click="backupToFolder">
+        📁 选择备份文件夹
+      </el-button>
+      <p class="desc small">
+        数据当前保存位置：<code>{{ dataDir }}</code>
+      </p>
     </el-card>
 
     <el-card shadow="never">
       <template #header>ℹ️ 关于</template>
       <p class="desc">
-        个人记账 v0.1.0<br />
+        个人记账 v0.1.1<br />
         本地记账工具 · 数据不出本机 · 无广告
       </p>
     </el-card>
@@ -120,5 +131,11 @@ async function doExport() {
   font-size: 13px;
   line-height: 1.8;
   margin: 0 0 12px;
+}
+
+.desc.small {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #909399;
 }
 </style>
