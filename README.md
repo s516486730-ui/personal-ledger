@@ -18,7 +18,7 @@
 
 在 [Releases](https://github.com/s516486730-ui/personal-ledger/releases) 页面下载最新版安装包，双击安装：
 
-- ✅ **Windows 10 / 11**（x64）：`个人记账_0.1.1_x64-setup.exe`（约 3.6 MB）
+- ✅ **Windows 10 / 11**（x64）：`personal-ledger_0.1.1_x64-setup.exe`（约 3.6 MB）
 - 🚧 **macOS**：开发中，敬请期待
 
 ## 🛠 技术栈
